@@ -1,0 +1,289 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String          @id @default(cuid())
+  name           String?
+  email          String          @unique
+  passwordHash   String?
+  role           Role            @default(USER)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  contributions  Contribution[]
+  favorites      Favorite[]
+  quizResults    QuizResult[]
+  heritageVisits HeritageVisit[]
+  oralHistories  OralHistory[]
+}
+
+model State {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  description   String?
+  imageUrl      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  districts     District[]
+  heritage      Heritage[]
+  oralHistories OralHistory[]
+}
+
+model District {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String
+  stateId       String
+  imageUrl      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  state         State         @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  heritage      Heritage[]
+  oralHistories OralHistory[]
+
+  @@unique([stateId, slug])
+}
+
+model Category {
+  id            String        @id @default(cuid())
+  name          String        @unique
+  slug          String        @unique
+  description   String?
+  imageUrl      String?
+  heritage      Heritage[]
+  oralHistories OralHistory[]
+}
+
+model Heritage {
+  id                 String             @id @default(cuid())
+  name               String
+  slug               String             @unique
+  shortDescription   String?
+  description        String?
+  origin             String?
+  history            String?
+  significance       String?
+  story              String?
+  language           String?
+  regions            String?
+  practitioners      String?
+  festivals          String?
+  timeline           String?
+  preservationStatus PreservationStatus @default(STABLE)
+  verified           Boolean            @default(false)
+  stateId            String?
+  districtId         String?
+  categoryId         String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  contributions      Contribution[]
+  favorites          Favorite[]
+  category           Category?          @relation(fields: [categoryId], references: [id])
+  district           District?          @relation(fields: [districtId], references: [id])
+  state              State?             @relation(fields: [stateId], references: [id])
+  media              Media[]
+  visits             HeritageVisit[]
+  oralHistories      OralHistory[]
+}
+
+model Media {
+  id          String    @id @default(cuid())
+  title       String?
+  type        String
+  url         String
+  description String?
+  heritageId  String?
+  createdAt   DateTime  @default(now())
+  heritage    Heritage? @relation(fields: [heritageId], references: [id], onDelete: Cascade)
+}
+
+model Contribution {
+  id         String             @id @default(cuid())
+  title      String
+  content    String
+  status     VerificationStatus @default(PENDING)
+  reviewNote String?
+  userId     String
+  heritageId String?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  heritage   Heritage?          @relation(fields: [heritageId], references: [id])
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Favorite {
+  id         String   @id @default(cuid())
+  userId     String
+  heritageId String
+  createdAt  DateTime @default(now())
+  heritage   Heritage @relation(fields: [heritageId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, heritageId])
+}
+
+model Book {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  description String?
+  coverUrl    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  pages       BookPage[]
+}
+
+model BookPage {
+  id       String  @id @default(cuid())
+  bookId   String
+  pageNo   Int
+  title    String?
+  content  String
+  imageUrl String?
+  book     Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, pageNo])
+}
+
+model Slideshow {
+  id         String   @id @default(cuid())
+  title      String
+  subtitle   String?
+  imageUrl   String
+  buttonText String?
+  buttonUrl  String?
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+}
+
+model Quiz {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  createdAt   DateTime       @default(now())
+  questions   QuizQuestion[]
+}
+
+model QuizQuestion {
+  id            String @id @default(cuid())
+  quizId        String
+  question      String
+  options       String
+  correctAnswer String
+  quiz          Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+}
+
+model QuizResult {
+  id        String   @id @default(cuid())
+  userId    String
+  quizId    String
+  score     Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum Role {
+  VISITOR
+  USER
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_CHANGES
+}
+
+enum PreservationStatus {
+  STABLE
+  VULNERABLE
+  ENDANGERED
+  CRITICAL
+}
+
+model HeritageVisit {
+  id         String   @id @default(cuid())
+  userId     String
+  heritageId String
+  visitedAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  heritage Heritage @relation(fields: [heritageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, heritageId])
+}
+
+model OralHistory {
+  id               String             @id @default(cuid())
+  title            String
+  speakerName      String?
+  originalLanguage String
+  transcript       String?
+  translation      String?
+  audioUrl         String?
+  coverImageUrl    String?
+  description      String?
+  type             String             @default("STORY")
+  status           VerificationStatus @default(PENDING)
+  verified         Boolean            @default(false)
+  userId           String?
+  heritageId       String?
+  stateId          String?
+  districtId       String?
+  categoryId       String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  heritage Heritage? @relation(fields: [heritageId], references: [id], onDelete: SetNull)
+  state    State?    @relation(fields: [stateId], references: [id], onDelete: SetNull)
+  district District? @relation(fields: [districtId], references: [id], onDelete: SetNull)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+}
+
+model AIKnowledgeDocument {
+  id          String             @id @default(cuid())
+  title       String
+  type        String
+  sourceUrl   String?
+  description String?
+  verified    Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  chunks      AIKnowledgeChunk[]
+}
+
+model AIKnowledgeChunk {
+  id          String              @id @default(cuid())
+  documentId  String
+  chunkIndex  Int
+  content     String
+  tokenCount  Int?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  document    AIKnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, chunkIndex])
+}
+
+model HomepageVideo {
+  id          String             @id @default(cuid())
+  title       String
+  description String?
+  url         String
+  thumbnail   String?
+  status      VerificationStatus @default(PENDING)
+  published   Boolean            @default(false)
+  sortOrder   Int                @default(0)
+  rotation    Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+}
